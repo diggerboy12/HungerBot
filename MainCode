@@ -47,4 +47,4 @@ client.on('message', message => {
     }
 })
 
-client.login('NzcxMTI5MzU3NTI3Mjg1ODIx.X5noLQ.MDC-oRqxV6RKO-0Y17e1WmyRLBg');
+client.login('Can't share this');
