@@ -1,1 +1,50 @@
-test
+const Discord = require('discord.js');
+
+const client = new Discord.Client();
+
+const prefix = '!';
+
+client.once('ready', () => {
+    console.log('HungerBot is online!');
+    playing = false;
+    setup = false;
+})
+
+client.on('message', message => {
+    if (!message.content.startsWith(prefix) || message.author.bot) return;
+
+    const args = message.content.slice(prefix.length).split(/ +/);
+    const command = args.shift().toLowerCase();
+
+    if (command === 'start') {
+        if (!playing && !setup) {
+            message.channel.send('Starting Match \nType !add "name" to add players');
+            setup = true;
+            players = [];
+        } else {
+            message.channel.send('A match has already started');
+        }
+    } else if (command === 'add') {
+        if (setup) {
+            if (!players.includes(args[0])) {
+                players.push(args[0]);
+                message.channel.send('Added ' + args[0]);
+            } else {
+                message.channel.send(args[0] + ' is already in the game');
+            }
+        } else {
+            message.channel.send('There are no matches to join, type !start to create one!');
+        }
+    } else if (command === 'players') {
+        playText = '';
+        for (i = 0; i < players.length; i++) {
+            playText = playText + players[i] + '\n';
+        }
+        const embed = new Discord.MessageEmbed()
+            .setColor(0x27AE60)
+            .addField('**Players:**', playText);
+        message.channel.send(embed);
+    }
+})
+
+client.login('NzcxMTI5MzU3NTI3Mjg1ODIx.X5noLQ.MDC-oRqxV6RKO-0Y17e1WmyRLBg');
