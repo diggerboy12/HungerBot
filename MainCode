@@ -1,4 +1,11 @@
-r playing, setup;
+const Discord = require('discord.js');
+
+const client = new Discord.Client();
+
+const prefix = '<';
+var players = [];
+var genders = [];
+var playing, setup;
 client.once('ready', () => {
     console.log('HungerBot is online!');
     playing = false;
@@ -10,31 +17,40 @@ client.on('message', message => {
 
     const args = message.content.slice(prefix.length).split(/ +/);
     const command = args.shift().toLowerCase();
-
-    if (command === 'match') {
-        setupGame(message);
-    } else if (command === 'add') {
-        addPlayer(args[0], message);
-    } else if (command === 'players') {
-        displayPlayers(message);
+    switch (command) {
+        case 'match':
+            setupGame(message);    
+            break;
+        case 'addplayer':
+            addPlayer(args[0], message, 'female');
+            break;
+        case 'players':
+            displayPlayers(message);
+            break;
+        case 'playersetting':
+            playersetting(message, args[0], args[1]);
+            break;
+        default:
+            
     }
 })
 
-function addPlayer(name, message) {
+function addPlayer(name, message, gender) {
     if (setup) {
         if (!players.includes(name)) {
             players.push(name);
             message.channel.send('Added ' + name);
+            genders.push(gender);
         } else {
             message.channel.send(name + ' is already in the game');
         }
     } else {
-        message.channel.send('There are no matches to join, type !start to create one!');
+        message.channel.send('There are no matches to join, type <match to create one!');
     }
 }
 function setupGame(message) {
     if (!playing && !setup) {
-        message.channel.send('Starting Match \nType !add "name" to add players');
+        message.channel.send('Starting Match \nType <addplayer "name" to add players');
         setup = true;
         players = [];
     } else {
@@ -44,13 +60,36 @@ function setupGame(message) {
 function displayPlayers(message) {
     playText = '';
     for (i = 0; i < players.length; i++) {
-        playText = playText + players[i] + '\n';
+        playText = playText + players[i] + ': ' + genders[i] + '\n';
     }
     const embed = new Discord.MessageEmbed()
         .setColor(0x27AE60)
         .addField('**Players:**', playText);
     message.channel.send(embed);
 }
+function playersetting(message, player, setting) {
+    if (player == null || setting == null) {
+        return;
+    }
+    id = findItem(player, players);
+    if (id == null) {
+        return;
+    }
+    if (setting == 'male') {
+        genders[id] = 'male';
+    } else if (setting == 'female') {
+        genders[id] = 'female';
+    }
+}
+function findItem(item, list) {
+    for (i = 0; i < list.length; i++) {
+        if (list[i] == item) {
+            return i;
+        }
+    }
+    return null;
+}
+
 
 
 client.login('Can't share this');
