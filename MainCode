@@ -1,9 +1,4 @@
-const Discord = require('discord.js');
-
-const client = new Discord.Client();
-
-const prefix = '!';
-
+r playing, setup;
 client.once('ready', () => {
     console.log('HungerBot is online!');
     playing = false;
@@ -16,35 +11,46 @@ client.on('message', message => {
     const args = message.content.slice(prefix.length).split(/ +/);
     const command = args.shift().toLowerCase();
 
-    if (command === 'start') {
-        if (!playing && !setup) {
-            message.channel.send('Starting Match \nType !add "name" to add players');
-            setup = true;
-            players = [];
-        } else {
-            message.channel.send('A match has already started');
-        }
+    if (command === 'match') {
+        setupGame(message);
     } else if (command === 'add') {
-        if (setup) {
-            if (!players.includes(args[0])) {
-                players.push(args[0]);
-                message.channel.send('Added ' + args[0]);
-            } else {
-                message.channel.send(args[0] + ' is already in the game');
-            }
-        } else {
-            message.channel.send('There are no matches to join, type !start to create one!');
-        }
+        addPlayer(args[0], message);
     } else if (command === 'players') {
-        playText = '';
-        for (i = 0; i < players.length; i++) {
-            playText = playText + players[i] + '\n';
-        }
-        const embed = new Discord.MessageEmbed()
-            .setColor(0x27AE60)
-            .addField('**Players:**', playText);
-        message.channel.send(embed);
+        displayPlayers(message);
     }
 })
+
+function addPlayer(name, message) {
+    if (setup) {
+        if (!players.includes(name)) {
+            players.push(name);
+            message.channel.send('Added ' + name);
+        } else {
+            message.channel.send(name + ' is already in the game');
+        }
+    } else {
+        message.channel.send('There are no matches to join, type !start to create one!');
+    }
+}
+function setupGame(message) {
+    if (!playing && !setup) {
+        message.channel.send('Starting Match \nType !add "name" to add players');
+        setup = true;
+        players = [];
+    } else {
+        message.channel.send('A match has already started');
+    }
+}
+function displayPlayers(message) {
+    playText = '';
+    for (i = 0; i < players.length; i++) {
+        playText = playText + players[i] + '\n';
+    }
+    const embed = new Discord.MessageEmbed()
+        .setColor(0x27AE60)
+        .addField('**Players:**', playText);
+    message.channel.send(embed);
+}
+
 
 client.login('Can't share this');
