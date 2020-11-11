@@ -4,12 +4,20 @@ const client = new Discord.Client();
 
 const prefix = '<';
 var players = [];
+var deadPlayers = [];
 var genders = [];
-var playing, setup;
+var deadGenders = [];
+var events = [];
+var deaths = [];
+var len = [];
+var playing, setup, day;
+var confirm = false;
 client.once('ready', () => {
     console.log('HungerBot is online!');
     playing = false;
     setup = false;
+    day = 0;
+    generateEvents();
 })
 
 client.on('message', message => {
@@ -19,7 +27,7 @@ client.on('message', message => {
     const command = args.shift().toLowerCase();
     switch (command) {
         case 'match':
-            setupGame(message);    
+            setupGame(message);
             break;
         case 'addplayer':
             addPlayer(args[0], message, 'female');
@@ -30,7 +38,51 @@ client.on('message', message => {
         case 'playersetting':
             playersetting(message, args[0], args[1]);
             break;
-        default:
+        case 'begin':
+            start(message);
+            break;
+        case 'advance':
+            var times = 1;
+            if (args != null) {
+                if (args[0] > 1) {
+                    times = args[0];
+                }
+            }
+            for (w = 0; w < times; w++) {
+                if (players.length > 1) {
+                    advance(message);
+                } else {
+                    const embed = new Discord.MessageEmbed()
+                        .setColor(0x27AE60)
+                        .setTitle('`' + players[0] + '` is victorious!');
+                    message.channel.send(embed);
+                    break;
+                }
+            }
+            break;
+        case 'forcequit':
+            if (!confirm) {
+                message.channel.send('Are you sure you want to quit?');
+                confirm = true;
+            } else {
+                if (args[0] == 'confirm') {
+                    reset();
+                    confirm = false;
+                    message.channel.send('Game has been reset.')
+                } else {
+                    message.channel.send('Forcequit cancelled.')
+                }
+            }
+            break;
+        case 'remove':
+            remove(message, args[0]);
+            break;
+        case 'testplayers':
+            players = ['shaggy', 'hihi', 'sundew', 'slime', 'poseidon', 'cupberry', 'mickey', 'aaron', 'eraDude', 'Henry'];
+            genders = ['female', 'female', 'female', 'female', 'female', 'female', 'female', 'female', 'female', 'female',];
+                message.channel.send('Added test players');
+                break;
+            default:
             
     }
 })
@@ -45,13 +97,30 @@ function addPlayer(name, message, gender) {
             message.channel.send(name + ' is already in the game');
         }
     } else {
-        message.channel.send('There are no matches to join, type <match to create one!');
+        if (playing) {
+            message.channel.send('There is already a game being played, please wait until the next round.');
+        } else {
+            message.channel.send('There are no matches to join, type <match to create one!');
+        }
+    }
+}
+function start(message) {
+    if (!playing && setup) {
+        playing = true;
+        setup = false;
+        const embed = new Discord.MessageEmbed()
+            .setColor(0x27AE60)
+            .addField('**A trumpet sounds as the players enter the arena...**', 'Use <advance to continue.');
+        message.channel.send(embed);
+    } else {
+        message.channel.send('The game has already started or doesn\'t exist.')
     }
 }
 function setupGame(message) {
     if (!playing && !setup) {
         message.channel.send('Starting Match \nType <addplayer "name" to add players');
         setup = true;
+        day = 0;
         players = [];
     } else {
         message.channel.send('A match has already started');
@@ -62,12 +131,20 @@ function displayPlayers(message) {
     for (i = 0; i < players.length; i++) {
         playText = playText + players[i] + ': ' + genders[i] + '\n';
     }
+    deadText = '';
+    for (i = 0; i < deadPlayers.length; i++) {
+        deadText = deadText + deadPlayers[i] + ': ' + deadGenders[i] + '\n';
+    }
+    if (deadText == '') {
+        deadText = 'No dead players.';
+    }
     const embed = new Discord.MessageEmbed()
         .setColor(0x27AE60)
-        .addField('**Players:**', playText);
+        .addField('**Live Players:**', playText)
+        .addField('**Dead Players:**', deadText);
     message.channel.send(embed);
 }
-function playersetting(message, player, setting) {
+function playersetting(player, setting) {
     if (player == null || setting == null) {
         return;
     }
@@ -89,7 +166,126 @@ function findItem(item, list) {
     }
     return null;
 }
+function advance(message) {
+    message.channel.send('> ' + event());
+}
+function event() {
+   // for (id = Math.floor(Math.random() * events.length); len[id] <= players.length;) {
+    id = Math.floor(Math.random() * events.length);
+    //}
+    eventPlayers = [];
+    for (i = 0; i < len[id];) {
+        tex = Math.floor(Math.random() * players.length);
+        if (!eventPlayers.includes(tex)) {
+            eventPlayers.push(tex);
+            i++;
+        }
+    }
+    tex = events[id];
+    tex = tex.replace(/.1/g, '`' + players[eventPlayers[0]] + '`');
+    tex = tex.replace(/.2/g, '`' + players[eventPlayers[1]] + '`');
+    tex = tex.replace(/.3/g, '`' + players[eventPlayers[2]] + '`');
+    tex = tex.replace(/.4/g, '`' + players[eventPlayers[3]] + '`');
+    tex = tex.replace(/.5/g, '`' + players[eventPlayers[4]] + '`');
+    tex = tex.replace(/.6/g, '`' + players[eventPlayers[5]] + '`');
+    var killPlayers = [];
+    for (l = 0; l < eventPlayers.length; l++) {
+        if (deaths[id].includes(l)) {
+            killPlayers.push(eventPlayers[l]);
+        }
+    }
+    killPlayers.sort(function (a, b) { return b - a });
+    for (l = 0; l < killPlayers.length; l++) {
+        deadPlayers.push(players.splice(killPlayers[l], 1));
+        deadGenders.push(genders.splice(killPlayers[l], 1));
+    }
+    return tex;
 
+}
+function generateEvents() {
+    addEvent('.1 climbs a tree to sleep.', '', 1);
+    addEvent('.1 falls into a lake and drowns.', '0', 1);
+    addEvent('.1 triggers an explosion, killing .2 and .3', '12', 3);
+    addEvent('.1, .2, and .3 discuss the games and what they think will happen in the morning.', '', 3);
+    addEvent('.1 and .2 huddle for warmth.', '', 2);
+    addEvent('.1 poisons .2\'s drink. They drink it and die.', '1', 2);
+    addEvent('.1 thinks about winning.', '', 1);
+    addEvent('.1 tries to start a fire, but is unsuccessful.', '', 1);
+    addEvent('.1 starts a fire.', '', 1);
+    addEvent('.1 passes out from exhaustion.', '', 1);
+    addEvent('.1 recieves [item] from an unknown sponsor.', '', 1);
+    addEvent('.1 and .2 hold hands.', '', 2);
+    addEvent('.1 catches .2 off guard and kills them.', '1', 2);
+    addEvent('.1 drowns .2 who they thought was a shark trying to eat them.', '1', 2);
+    addEvent('.1 and .2 work together to drown .3.', '2', 3);
+    addEvent('.1, .2, and .3 unsuccessfully ambush .4, .5, and .6, who kill them instead.', '012', 6);
+    addEvent('.1 and .2 fight .3 and .4. .3 and .4 survive.', '01', 4);
+    addEvent('.1 and .2 track down and kill .3.', '2', 3);
+    addEvent('.1 dies of dysentry.', '0', 1);
+    addEvent('.1 shoots an arrow into .2\'s head.', '1', 2);
+    addEvent('.1 kills .2 while they are sleeping.', '1', 2);
+    addEvent('.1 pushes .2 off a cliff during a knife fight.', '1', 2);
+    addEvent('.1, .2, and .3 start fighting, but .2 runs away as .1 kills .3.', '2', 3);
+    addEvent('.1 unknowingly eats toxic berries and dies.', '0', 1);
+    addEvent('.1 and .2 decide to jump down the rabbit hole to Wonderland, which turns out to be a pit of rocks.', '', 2);
+    addEvent('.1 survives.', '', 1);
+    addEvent('.1 discovers a river.', '', 1);
+    addEvent('.1 tries to spear a fish with a trident.', '', 1);
+    addEvent('.1 makes a spear.', '', 1);
+    addEvent('.1 destroys .2\'s supplies while they are asleep.', '', 2);
+    addEvent('.1 lets .2 into their shelter.', '', 2);
+    addEvent('.1 begs for .2 to kill them, .2 refuses, keeping .1 alive.', '', 2);
+    addEvent('.1 and .2 tell stories about themselves to eachother.', '', 2);
+    addEvent('.1 defeats .2 in a fight, but spares their life.', '', 2);
+    addEvent('.1 camoflauges themselves in the bushes.', '', 1);
+    addEvent('.1 explores the arena.', '', 1);
+    addEvent('.1 stays awake all night.', '', 1);
+    addEvent('.1 discovers a cave.', '', 1);
+    addEvent('.1 is pricked by thorns while picking berries.', '', 1);
+    addEvent('.1 travels to higher ground.', '', 1);
+    addEvent('.1 thinks about home.', '', 1);
+    addEvent('.1 stalks .2.', '', 2);
+    addEvent('.1 scares .2 off.', '', 2);
+    addEvent('.1 runs away from .2.', '', 2);
+    addEvent('.1 injures themself.', '', 1);
+    addEvent('.1 quietly hums.', '', 1);
+    addEvent('.1 screams for help.', '', 1);
+    addEvent('.1 cries themself to sleep.', '', 1);
+    addEvent('.1 loses sight of where they are.', '', 1);
+    addEvent('.1, .2, .3, and .4 raid .5\'s camp while they are out hunting.', '', 5);
+    addEvent('.1 goes hunting.', '', 1);
+    addEvent('.1 sees smoke rising in the distance, but decides not to investigate.', '', 1);
+    addEvent('.1 hunts for other tributes.', '', 1);
+    addEvent('.1, .2, .3 and .4 share everything before running.', '', 4);
+    addEvent('.1 and .2 fight for a bag. .1 gives up and retreats.', '', 2);
+}
+function addEvent(text, deathData, length) {
+    events.push(text);
+    deaths.push(deathData);
+    len.push(length);
+}
+function reset() {
+    playing = false;
+    setup = false;
+    day = 0;
+    players = [];
+    deadPlayers = [];
+    genders = [];
+    deadGenders = [];
+    events = [];
+    deaths = [];
+    len = [];
+    generateEvents();
+}
+function remove(message, name) {
+    if (players.includes(name)) {
+        index = findItem(name, players);
+        players.splice(index, 1);
+        genders.splice(index, 1);
+    } else {
+        message.channel.send('That player doesn\'t exist');
+    }
+}
 
 
 client.login('Can't share this');
