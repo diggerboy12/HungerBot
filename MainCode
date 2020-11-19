@@ -1,9 +1,15 @@
-const Discord = require('discord.js');
 
-const client = new Discord.Client();
-
+var loops,loop = 0;
 const prefix = '<';
+var thingsToday = [];
+var deadToday = [];
+var deadDistToday = [];
+var eventPlayers = [];
+var played = [];
 var players = [];
+var districts = [];
+var deadDistricts = [];
+var district = 1;
 var deadPlayers = [];
 var genders = [];
 var deadGenders = [];
@@ -11,7 +17,6 @@ var events = [];
 var deaths = [];
 var len = [];
 var playing, setup, day;
-var confirm = false;
 client.once('ready', () => {
     console.log('HungerBot is online!');
     playing = false;
@@ -30,7 +35,7 @@ client.on('message', message => {
             setupGame(message);
             break;
         case 'addplayer':
-            addPlayer(args[0], message, 'female');
+            addPlayer(args[0], message, args[1], 'nothing', args[2]);
             break;
         case 'players':
             displayPlayers(message);
@@ -42,57 +47,114 @@ client.on('message', message => {
             start(message);
             break;
         case 'advance':
-            var times = 1;
-            if (args != null) {
-                if (args[0] > 1) {
-                    times = args[0];
+            if (playing) {
+                thingsToday = [];
+                var times = 1;
+                if (args != null) {
+                    if (args[0] > 1) {
+                        times = args[0];
+                    }
                 }
-            }
-            for (w = 0; w < times; w++) {
-                if (players.length > 1) {
-                    advance(message);
-                } else {
+                for (w = 0; w < times; w++) {
+                    if (players.length > 1) {
+                        advance(message);
+                    } else {
+                        const embed = new Discord.MessageEmbed()
+                            .setColor(0x27AE60)
+                            .setTitle('`' + players[0] + '` is victorious!');
+                        message.channel.send(embed);
+                        reset();
+                        break;
+                    }
+                }
+                if (thingsToday.length > 0) {
                     const embed = new Discord.MessageEmbed()
                         .setColor(0x27AE60)
-                        .setTitle('`' + players[0] + '` is victorious!');
+                        .setTitle('> ' + thingsToday);
                     message.channel.send(embed);
-                    break;
                 }
+            } else {
+                message.channel.send('There aren\'t any games running right now.');
             }
+
             break;
         case 'forcequit':
-            if (!confirm) {
-                message.channel.send('Are you sure you want to quit?');
-                confirm = true;
-            } else {
+            if (playing || setup) {
                 if (args[0] == 'confirm') {
                     reset();
-                    confirm = false;
-                    message.channel.send('Game has been reset.')
+                    message.channel.send('Game has been reset.');
                 } else {
-                    message.channel.send('Forcequit cancelled.')
+
+                    message.channel.send('Forcequit cancelled.');
                 }
+            } else {
+                message.channel.send('There are no games to quit');
             }
             break;
         case 'remove':
             remove(message, args[0]);
             break;
         case 'testplayers':
+            testplayers(message);
             players = ['shaggy', 'hihi', 'sundew', 'slime', 'poseidon', 'cupberry', 'mickey', 'aaron', 'eraDude', 'Henry'];
             genders = ['female', 'female', 'female', 'female', 'female', 'female', 'female', 'female', 'female', 'female',];
-                message.channel.send('Added test players');
-                break;
-            default:
-            
-    }
-})
+            break;
+        case 'test':
+            sec = args[0];
+            if (sec == null) {
+                sec = 1
+            }
+            times = args[1];
+            if (times == null) {
+                times = 1;
+            }
+            loop = 0;
+            loops = times;
+            timeLoop(message, sec * 1000);
+        default:
 
-function addPlayer(name, message, gender) {
+
+    }
+});
+
+
+function timeLoop(message, time) {
+    setTimeout(function () {
+        message.channel.send('test');
+        loop++;
+        if (loop < loops) {
+            timeLoop(message, time);
+        }
+    }, time);
+}
+
+function testplayers(message) {
+    addPlayer('shaggy', message, 'female', 'testplayers');
+    addPlayer('hihi', message, 'female', 'testplayers');
+    addPlayer('sundew', message, 'female', 'testplayers');
+    addPlayer('slime', message, 'female', 'testplayers');
+    addPlayer('poseidon', message, 'female', 'testplayers');
+    addPlayer('cupberry', message, 'female', 'testplayers');
+    addPlayer('mickey', message, 'female', 'testplayers');
+    addPlayer('aaron', message, 'female', 'testplayers');
+    addPlayer('eraDude', message, 'female', 'testplayers');
+    addPlayer('Henry', message, 'female', 'testplayers');
+    message.channel.send('Added test players');
+}
+function addPlayer(name, message, gender = 'female', com = 'nothing', dis = 'none') {
     if (setup) {
         if (!players.includes(name)) {
             players.push(name);
-            message.channel.send('Added ' + name);
+            if (com != 'testplayers') {
+                message.channel.send('Added ' + name);
+            }
             genders.push(gender);
+            if (dis == 'none') {
+                districts.push(Math.ceil(district / 2));
+                district++;
+            } else {
+                districts.push(dis);
+            }
         } else {
             message.channel.send(name + ' is already in the game');
         }
@@ -106,14 +168,18 @@ function addPlayer(name, message, gender) {
 }
 function start(message) {
     if (!playing && setup) {
-        playing = true;
-        setup = false;
-        const embed = new Discord.MessageEmbed()
-            .setColor(0x27AE60)
-            .addField('**A trumpet sounds as the players enter the arena...**', 'Use <advance to continue.');
-        message.channel.send(embed);
+        if (players.length > 1) {
+            playing = true;
+            setup = false;
+            const embed = new Discord.MessageEmbed()
+                .setColor(0x27AE60)
+                .addField('**A trumpet sounds as the players enter the arena...**', 'Use <advance to continue.');
+            message.channel.send(embed);
+        } else {
+            message.channel.send('You need more players!');
+        }
     } else {
-        message.channel.send('The game has already started or doesn\'t exist.')
+        message.channel.send('The game has already started or doesn\'t exist.');
     }
 }
 function setupGame(message) {
@@ -129,11 +195,14 @@ function setupGame(message) {
 function displayPlayers(message) {
     playText = '';
     for (i = 0; i < players.length; i++) {
-        playText = playText + players[i] + ': ' + genders[i] + '\n';
+        playText = playText + 'District ' + districts[i] + ' - ' + players[i] + '(' + genders[i] + ')\n';
+    }
+    if (playText == '') {
+        playText = 'No players.';
     }
     deadText = '';
     for (i = 0; i < deadPlayers.length; i++) {
-        deadText = deadText + deadPlayers[i] + ': ' + deadGenders[i] + '\n';
+        deadText = deadText + 'District ' + deadDistricts[i] + ' - ' + deadPlayers[i] + '(' + deadGenders[i] + ')\n';
     }
     if (deadText == '') {
         deadText = 'No dead players.';
@@ -144,7 +213,7 @@ function displayPlayers(message) {
         .addField('**Dead Players:**', deadText);
     message.channel.send(embed);
 }
-function playersetting(player, setting) {
+function playersetting(message, player, setting) {
     if (player == null || setting == null) {
         return;
     }
@@ -154,8 +223,10 @@ function playersetting(player, setting) {
     }
     if (setting == 'male') {
         genders[id] = 'male';
+        message.channel.send('Changed ' + player + '\'s gender');
     } else if (setting == 'female') {
         genders[id] = 'female';
+        message.channel.send('Changed ' + player + '\'s gender');
     }
 }
 function findItem(item, list) {
@@ -167,27 +238,41 @@ function findItem(item, list) {
     return null;
 }
 function advance(message) {
-    message.channel.send('> ' + event());
+    if (played.includes(false)) {
+        t = event();
+        message.channel.send('> ' + t);
+        thingsToday.push(t);
+    } else {
+        newDay(message);
+    }
 }
 function event() {
-   // for (id = Math.floor(Math.random() * events.length); len[id] <= players.length;) {
-    id = Math.floor(Math.random() * events.length);
-    //}
+    playerActions = 0;
+    for (t = 0; t < played.length; t++) {
+        if (played[t] == false) {
+            playerActions++;
+        }
+    }
+    var id = Math.floor(Math.random() * events.length);
+    for (tex = 'eh'; len[id] > players.length || len[id] > playerActions;) { 
+        id = Math.floor(Math.random() * events.length);
+    }
     eventPlayers = [];
     for (i = 0; i < len[id];) {
         tex = Math.floor(Math.random() * players.length);
-        if (!eventPlayers.includes(tex)) {
+        if (!eventPlayers.includes(tex) && played[tex] == false) {
             eventPlayers.push(tex);
+            played[tex] = true;
             i++;
         }
     }
     tex = events[id];
-    tex = tex.replace(/.1/g, '`' + players[eventPlayers[0]] + '`');
-    tex = tex.replace(/.2/g, '`' + players[eventPlayers[1]] + '`');
-    tex = tex.replace(/.3/g, '`' + players[eventPlayers[2]] + '`');
-    tex = tex.replace(/.4/g, '`' + players[eventPlayers[3]] + '`');
-    tex = tex.replace(/.5/g, '`' + players[eventPlayers[4]] + '`');
-    tex = tex.replace(/.6/g, '`' + players[eventPlayers[5]] + '`');
+    tex = tex.replace(/~1/g, '`' + players[eventPlayers[0]] + '`');
+    tex = tex.replace(/~2/g, '`' + players[eventPlayers[1]] + '`');
+    tex = tex.replace(/~3/g, '`' + players[eventPlayers[2]] + '`');
+    tex = tex.replace(/~4/g, '`' + players[eventPlayers[3]] + '`');
+    tex = tex.replace(/~5/g, '`' + players[eventPlayers[4]] + '`');
+    tex = tex.replace(/~6/g, '`' + players[eventPlayers[5]] + '`');
     var killPlayers = [];
     for (l = 0; l < eventPlayers.length; l++) {
         if (deaths[id].includes(l)) {
@@ -196,68 +281,72 @@ function event() {
     }
     killPlayers.sort(function (a, b) { return b - a });
     for (l = 0; l < killPlayers.length; l++) {
+        deadToday.push(players[killPlayers[l]]);
+        deadDistToday.push(districts[killPlayers[l]]);
         deadPlayers.push(players.splice(killPlayers[l], 1));
         deadGenders.push(genders.splice(killPlayers[l], 1));
+        deadDistricts.push(districts.splice(killPlayers[l], 1));
+        played.splice(killPlayers[l], 1);
     }
     return tex;
 
 }
 function generateEvents() {
-    addEvent('.1 climbs a tree to sleep.', '', 1);
-    addEvent('.1 falls into a lake and drowns.', '0', 1);
-    addEvent('.1 triggers an explosion, killing .2 and .3', '12', 3);
-    addEvent('.1, .2, and .3 discuss the games and what they think will happen in the morning.', '', 3);
-    addEvent('.1 and .2 huddle for warmth.', '', 2);
-    addEvent('.1 poisons .2\'s drink. They drink it and die.', '1', 2);
-    addEvent('.1 thinks about winning.', '', 1);
-    addEvent('.1 tries to start a fire, but is unsuccessful.', '', 1);
-    addEvent('.1 starts a fire.', '', 1);
-    addEvent('.1 passes out from exhaustion.', '', 1);
-    addEvent('.1 recieves [item] from an unknown sponsor.', '', 1);
-    addEvent('.1 and .2 hold hands.', '', 2);
-    addEvent('.1 catches .2 off guard and kills them.', '1', 2);
-    addEvent('.1 drowns .2 who they thought was a shark trying to eat them.', '1', 2);
-    addEvent('.1 and .2 work together to drown .3.', '2', 3);
-    addEvent('.1, .2, and .3 unsuccessfully ambush .4, .5, and .6, who kill them instead.', '012', 6);
-    addEvent('.1 and .2 fight .3 and .4. .3 and .4 survive.', '01', 4);
-    addEvent('.1 and .2 track down and kill .3.', '2', 3);
-    addEvent('.1 dies of dysentry.', '0', 1);
-    addEvent('.1 shoots an arrow into .2\'s head.', '1', 2);
-    addEvent('.1 kills .2 while they are sleeping.', '1', 2);
-    addEvent('.1 pushes .2 off a cliff during a knife fight.', '1', 2);
-    addEvent('.1, .2, and .3 start fighting, but .2 runs away as .1 kills .3.', '2', 3);
-    addEvent('.1 unknowingly eats toxic berries and dies.', '0', 1);
-    addEvent('.1 and .2 decide to jump down the rabbit hole to Wonderland, which turns out to be a pit of rocks.', '', 2);
-    addEvent('.1 survives.', '', 1);
-    addEvent('.1 discovers a river.', '', 1);
-    addEvent('.1 tries to spear a fish with a trident.', '', 1);
-    addEvent('.1 makes a spear.', '', 1);
-    addEvent('.1 destroys .2\'s supplies while they are asleep.', '', 2);
-    addEvent('.1 lets .2 into their shelter.', '', 2);
-    addEvent('.1 begs for .2 to kill them, .2 refuses, keeping .1 alive.', '', 2);
-    addEvent('.1 and .2 tell stories about themselves to eachother.', '', 2);
-    addEvent('.1 defeats .2 in a fight, but spares their life.', '', 2);
-    addEvent('.1 camoflauges themselves in the bushes.', '', 1);
-    addEvent('.1 explores the arena.', '', 1);
-    addEvent('.1 stays awake all night.', '', 1);
-    addEvent('.1 discovers a cave.', '', 1);
-    addEvent('.1 is pricked by thorns while picking berries.', '', 1);
-    addEvent('.1 travels to higher ground.', '', 1);
-    addEvent('.1 thinks about home.', '', 1);
-    addEvent('.1 stalks .2.', '', 2);
-    addEvent('.1 scares .2 off.', '', 2);
-    addEvent('.1 runs away from .2.', '', 2);
-    addEvent('.1 injures themself.', '', 1);
-    addEvent('.1 quietly hums.', '', 1);
-    addEvent('.1 screams for help.', '', 1);
-    addEvent('.1 cries themself to sleep.', '', 1);
-    addEvent('.1 loses sight of where they are.', '', 1);
-    addEvent('.1, .2, .3, and .4 raid .5\'s camp while they are out hunting.', '', 5);
-    addEvent('.1 goes hunting.', '', 1);
-    addEvent('.1 sees smoke rising in the distance, but decides not to investigate.', '', 1);
-    addEvent('.1 hunts for other tributes.', '', 1);
-    addEvent('.1, .2, .3 and .4 share everything before running.', '', 4);
-    addEvent('.1 and .2 fight for a bag. .1 gives up and retreats.', '', 2);
+    addEvent('~1 climbs a tree to sleep.', '', 1);
+    addEvent('~1 falls into a lake and drowns.', '0', 1);
+    addEvent('~1 triggers an explosion, killing ~2 and ~3', '12', 3);
+    addEvent('~1, ~2, and ~3 discuss the games and what they think will happen in the morning.', '', 3);
+    addEvent('~1 and ~2 huddle for warmth.', '', 2);
+    addEvent('~1 poisons ~2\'s drink. They drink it and die.', '1', 2);
+    addEvent('~1 thinks about winning.', '', 1);
+    addEvent('~1 tries to start a fire, but is unsuccessful.', '', 1);
+    addEvent('~1 starts a fire.', '', 1);
+    addEvent('~1 passes out from exhaustion.', '', 1);
+    addEvent('~1 recieves [item] from an unknown sponsor.', '', 1);
+    addEvent('~1 and ~2 hold hands.', '', 2);
+    addEvent('~1 catches ~2 off guard and kills them.', '1', 2);
+    addEvent('~1 drowns ~2 who they thought was a shark trying to eat them.', '1', 2);
+    addEvent('~1 and ~2 work together to drown ~3.', '2', 3);
+    addEvent('~1, ~2, and ~3 unsuccessfully ambush ~4, ~5, and ~6, who kill them instead.', '012', 6);
+    addEvent('~1 and ~2 fight ~3 and ~4. ~3 and ~4 survive.', '01', 4);
+    addEvent('~1 and ~2 track down and kill ~3.', '2', 3);
+    addEvent('~1 dies of dysentry.', '0', 1);
+    addEvent('~1 shoots an arrow into ~2\'s head.', '1', 2);
+    addEvent('~1 kills ~2 while they are sleeping.', '1', 2);
+    addEvent('~1 pushes ~2 off a cliff during a knife fight.', '1', 2);
+    addEvent('~1, ~2, and ~3 start fighting, but ~2 runs away as ~1 kills ~3.', '2', 3);
+    addEvent('~1 unknowingly eats toxic berries and dies.', '0', 1);
+    addEvent('~1 and ~2 decide to jump down the rabbit hole to Wonderland, which turns out to be a pit of rocks.', '', 2);
+    addEvent('~1 survives.', '', 1);
+    addEvent('~1 discovers a river.', '', 1);
+    addEvent('~1 tries to spear a fish with a trident.', '', 1);
+    addEvent('~1 makes a spear.', '', 1);
+    addEvent('~1 destroys ~2\'s supplies while they are asleep.', '', 2);
+    addEvent('~1 lets ~2 into their shelter.', '', 2);
+    addEvent('~1 begs for ~2 to kill them, ~2 refuses, keeping ~1 alive.', '', 2);
+    addEvent('~1 and ~2 tell stories about themselves to eachother.', '', 2);
+    addEvent('~1 defeats ~2 in a fight, but spares their life.', '', 2);
+    addEvent('~1 camoflauges themselves in the bushes.', '', 1);
+    addEvent('~1 explores the arena.', '', 1);
+    addEvent('~1 stays awake all night.', '', 1);
+    addEvent('~1 discovers a cave.', '', 1);
+    addEvent('~1 is pricked by thorns while picking berries.', '', 1);
+    addEvent('~1 travels to higher ground.', '', 1);
+    addEvent('~1 thinks about home.', '', 1);
+    addEvent('~1 stalks ~2.', '', 2);
+    addEvent('~1 scares ~2 off.', '', 2);
+    addEvent('~1 runs away from ~2.', '', 2);
+    addEvent('~1 injures themself.', '', 1);
+    addEvent('~1 quietly hums.', '', 1);
+    addEvent('~1 screams for help.', '', 1);
+    addEvent('~1 cries themself to sleep.', '', 1);
+    addEvent('~1 loses sight of where they are.', '', 1);
+    addEvent('~1, ~2, ~3, and ~4 raid ~5\'s camp while they are out hunting.', '', 5);
+    addEvent('~1 goes hunting.', '', 1);
+    addEvent('~1 sees smoke rising in the distance, but decides not to investigate.', '', 1);
+    addEvent('~1 hunts for other tributes.', '', 1);
+    addEvent('~1, ~2, ~3 and ~4 share everything before running.', '', 4);
+    addEvent('~1 and ~2 fight for a bag. ~1 gives up and retreats.', '', 2);
 }
 function addEvent(text, deathData, length) {
     events.push(text);
@@ -268,7 +357,13 @@ function reset() {
     playing = false;
     setup = false;
     day = 0;
+    played = [];
     players = [];
+    districts = [];
+    deadDistricts = [];
+    deadToday = [];
+    deadDistToday = [];
+    district = 1;
     deadPlayers = [];
     genders = [];
     deadGenders = [];
@@ -282,10 +377,32 @@ function remove(message, name) {
         index = findItem(name, players);
         players.splice(index, 1);
         genders.splice(index, 1);
+        message.channel.send('Removed ' + name);
     } else {
         message.channel.send('That player doesn\'t exist');
     }
 }
-
+function newDay(message) {
+    if (deadToday.length > 0) {
+        texto = '';
+        for (e = 0; e < deadToday.length; e++) {
+            texto = texto + 'District ' + deadDistToday[e] + ' - ' + deadToday[e] + '\n';
+        }
+        const embed = new Discord.MessageEmbed()
+            .setColor(0x27AE60)
+            .addField('**' + deadToday.length + ' cannon shots can be heard in the distance.**', texto);
+        message.channel.send(embed);
+    }
+    deadToday = [];
+    played = [];
+    for (i = 0; i < players.length; i++) {
+        played.push(false);
+    }
+    day++;
+    const embed = new Discord.MessageEmbed()
+        .setColor(0x27AE60)
+        .setTitle('**Day ' + day + '**');
+    message.channel.send(embed);
+}
 
 client.login('Can't share this');
